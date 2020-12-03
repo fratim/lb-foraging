@@ -102,6 +102,9 @@ class ForagingEnv(Env):
 
         self.n_agents = len(self.players)
 
+        self.punishall = None
+        self.neg_reward = None
+
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
@@ -402,11 +405,16 @@ class ForagingEnv(Env):
         return nobs
 
     def step(self, actions):
+
+        assert (self.punishall is not None and self.neg_reward is not None)
+
         self.current_step += 1
 
         for i, p in enumerate(self.players):
-            if actions[i] == 5 and Action(actions[i]) not in self._valid_actions[p]:
-                p.reward = -1
+            if actions[i]!= 0 and self.punishall:
+                p.reward = self.neg_reward
+            elif actions[i] == 5 and Action(actions[i]) not in self._valid_actions[p]:
+                p.reward = self.neg_reward
             else:
                 p.reward = 0
 
@@ -470,7 +478,7 @@ class ForagingEnv(Env):
             if adj_player_level < food:
                 # failed to load
                 for a in adj_players_loading:
-                    a.reward = -1
+                    a.reward = self.neg_reward
             else:
                 # else the food was loaded and each player scores points
                 for a in adj_players_loading:
