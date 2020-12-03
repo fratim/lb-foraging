@@ -404,8 +404,11 @@ class ForagingEnv(Env):
     def step(self, actions):
         self.current_step += 1
 
-        for p in self.players:
-            p.reward = 0
+        for i, p in enumerate(self.players):
+            if actions[i] == 5 and Action(actions[i]) not in self._valid_actions[p]:
+                p.reward = -1
+            else:
+                p.reward = 0
 
         actions = [
             Action(a) if Action(a) in self._valid_actions[p] else Action.NONE
@@ -444,13 +447,6 @@ class ForagingEnv(Env):
                 collisions[player.position].append(player)
                 loading_players.add(player)
 
-        # and do movements for non colliding players
-
-        for k, v in collisions.items():
-            if len(v) > 1:  # make sure no more than an player will arrive at location
-                continue
-            v[0].position = k
-
         # finally process the loadings:
         while loading_players:
             # find adjacent food
@@ -459,7 +455,11 @@ class ForagingEnv(Env):
             food = self.field[frow, fcol]
 
             adj_players = self.adjacent_players(frow, fcol)
-            adj_players = [
+            #adj_players = [
+            #    p for p in adj_players if p in loading_players or p is player
+            #]
+
+            adj_players_loading = [
                 p for p in adj_players if p in loading_players or p is player
             ]
 
@@ -469,17 +469,24 @@ class ForagingEnv(Env):
 
             if adj_player_level < food:
                 # failed to load
-                continue
+                for a in adj_players_loading:
+                    a.reward = -1
+            else:
+                # else the food was loaded and each player scores points
+                for a in adj_players_loading:
+                    a.reward = float(a.level * food)
+                    if self._normalize_reward:
+                        a.reward = a.reward / float(
+                            adj_player_level * self._food_spawned
+                        )  # normalize reward
+                # and the food is removed
+                self.field[frow, fcol] = 0
 
-            # else the food was loaded and each player scores points
-            for a in adj_players:
-                a.reward = float(a.level * food)
-                if self._normalize_reward:
-                    a.reward = a.reward / float(
-                        adj_player_level * self._food_spawned
-                    )  # normalize reward
-            # and the food is removed
-            self.field[frow, fcol] = 0
+        # and do movements for non colliding players
+        for k, v in collisions.items():
+            if len(v) > 1:  # make sure no more than an player will arrive at location
+                continue
+            v[0].position = k
 
         self._game_over = (
             self.field.sum() == 0 or self._max_episode_steps <= self.current_step

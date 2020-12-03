@@ -203,8 +203,9 @@ class Viewer(object):
         for p in players:
             p.update(scale=self.grid_size / p.width)
         batch.draw()
-        for p in env.players:
+        for i, p in enumerate(env.players):
             self._draw_badge(*p.position, p.level)
+            self._draw_ID(*p.position, i)
 
     def _draw_badge(self, row, col, level):
         resolution = 6
@@ -233,5 +234,22 @@ class Viewer(object):
             y=badge_y + 2,
             anchor_x="center",
             anchor_y="center",
+        )
+        label.draw()
+
+    def _draw_ID(self, row, col, id):
+
+        badge_x = col * self.grid_size + (2 / 5) * self.grid_size
+        badge_y = self.height - self.grid_size * (row+1) + (1 / 4) * self.grid_size
+
+        label = pyglet.text.Label(
+            str(id),
+            font_name="Times New Roman",
+            font_size=12,
+            x=badge_x,
+            y=badge_y + 2,
+            anchor_x="center",
+            anchor_y="center",
+            color=(255, 0, 0, 255),
         )
         label.draw()
