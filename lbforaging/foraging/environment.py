@@ -14,7 +14,6 @@ class Action(Enum):
     SOUTH = 2
     WEST = 3
     EAST = 4
-    LOAD = 5
 
 
 class Player:
@@ -56,7 +55,7 @@ class ForagingEnv(Env):
 
     metadata = {"render.modes": ["human"]}
 
-    action_set = [Action.NORTH, Action.SOUTH, Action.WEST, Action.EAST, Action.LOAD]
+    action_set = [Action.NORTH, Action.SOUTH, Action.WEST, Action.EAST]
     Observation = namedtuple(
         "Observation",
         ["field", "actions", "players", "game_over", "sight", "current_step"],
@@ -89,7 +88,7 @@ class ForagingEnv(Env):
         self.force_coop = force_coop
         self._game_over = None
 
-        self.action_space = gym.spaces.Tuple(tuple([gym.spaces.Discrete(6)] * len(self.players)))
+        self.action_space = gym.spaces.Tuple(tuple([gym.spaces.Discrete(5)] * len(self.players)))
         self.observation_space = gym.spaces.Tuple(tuple([self._get_observation_space()] * len(self.players)))
 
         self._rendering_initialized = False
@@ -295,8 +294,6 @@ class ForagingEnv(Env):
                 player.position[1] < self.cols - 1
                 and self.field[player.position[0], player.position[1] + 1] == 0
             )
-        elif action == Action.LOAD:
-            return self.adjacent_food(*player.position) > 0
 
         self.logger.error("Undefined action {} from {}".format(action, player.name))
         raise ValueError("Undefined action")
@@ -413,8 +410,6 @@ class ForagingEnv(Env):
         for i, p in enumerate(self.players):
             if actions[i]!= 0 and self.punishall:
                 p.reward = self.neg_reward
-            elif actions[i] == 5 and Action(actions[i]) not in self._valid_actions[p]:
-                p.reward = self.neg_reward
             else:
                 p.reward = 0
 
@@ -433,8 +428,6 @@ class ForagingEnv(Env):
                 )
                 actions[i] = Action.NONE
 
-        loading_players = set()
-
         # move players
         # if two or more players try to move to the same location they all fail
         collisions = defaultdict(list)
@@ -451,11 +444,21 @@ class ForagingEnv(Env):
                 collisions[(player.position[0], player.position[1] - 1)].append(player)
             elif action == Action.EAST:
                 collisions[(player.position[0], player.position[1] + 1)].append(player)
-            elif action == Action.LOAD:
-                collisions[player.position].append(player)
+
+        # and do movements for non colliding players
+        for k, v in collisions.items():
+            if len(v) > 1:  # make sure no more than an player will arrive at location
+                continue
+            v[0].position = k
+
+        # check if players are adjacent to food
+        loading_players = set()
+
+        for player in self.players:
+            if self.adjacent_food(*player.position) > 0:
                 loading_players.add(player)
 
-        # finally process the loadings:
+
         while loading_players:
             # find adjacent food
             player = loading_players.pop()
@@ -463,38 +466,23 @@ class ForagingEnv(Env):
             food = self.field[frow, fcol]
 
             adj_players = self.adjacent_players(frow, fcol)
-            #adj_players = [
-            #    p for p in adj_players if p in loading_players or p is player
-            #]
-
-            adj_players_loading = [
-                p for p in adj_players if p in loading_players or p is player
-            ]
 
             adj_player_level = sum([a.level for a in adj_players])
 
             loading_players = loading_players - set(adj_players)
 
             if adj_player_level < food:
-                # failed to load
-                for a in adj_players_loading:
-                    a.reward = self.neg_reward
-            else:
-                # else the food was loaded and each player scores points
-                for a in adj_players_loading:
-                    a.reward = float(a.level * food)
-                    if self._normalize_reward:
-                        a.reward = a.reward / float(
-                            adj_player_level * self._food_spawned
-                        )  # normalize reward
-                # and the food is removed
-                self.field[frow, fcol] = 0
-
-        # and do movements for non colliding players
-        for k, v in collisions.items():
-            if len(v) > 1:  # make sure no more than an player will arrive at location
                 continue
-            v[0].position = k
+
+            # else the food was loaded and each player scores points
+            for a in adj_players:
+                a.reward = float(a.level * food)
+                if self._normalize_reward:
+                    a.reward = a.reward / float(
+                        adj_player_level * self._food_spawned
+                    )  # normalize reward
+            # and the food is removed
+            self.field[frow, fcol] = 0
 
         self._game_over = (
             self.field.sum() == 0 or self._max_episode_steps <= self.current_step
