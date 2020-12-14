@@ -243,7 +243,7 @@ class Viewer(object):
         badge_y = self.height - self.grid_size * (row+1) + (1 / 4) * self.grid_size
 
         label = pyglet.text.Label(
-            str(id),
+            str(id+1),
             font_name="Times New Roman",
             font_size=12,
             x=badge_x,
