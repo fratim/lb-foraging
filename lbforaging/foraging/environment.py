@@ -101,9 +101,6 @@ class ForagingEnv(Env):
 
         self.n_agents = len(self.players)
 
-        self.punishall = None
-        self.neg_reward = None
-
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
@@ -403,15 +400,10 @@ class ForagingEnv(Env):
 
     def step(self, actions):
 
-        assert (self.punishall is not None and self.neg_reward is not None)
-
         self.current_step += 1
 
-        for i, p in enumerate(self.players):
-            if actions[i]!= 0 and self.punishall:
-                p.reward = self.neg_reward
-            else:
-                p.reward = 0
+        for p in self.players:
+            p.reward = 0
 
         actions = [
             Action(a) if Action(a) in self._valid_actions[p] else Action.NONE
