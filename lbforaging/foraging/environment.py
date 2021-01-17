@@ -224,20 +224,22 @@ class ForagingEnv(Env):
             col = self.np_random.randint(1, self.cols - 1)
 
             # check if it has neighbors:
-            if (
-                self.neighborhood(row, col).sum() > 0
-                or self.neighborhood(row, col, distance=2, ignore_diag=True) > 0
-                or not self._is_empty_location(row, col)
-            ):
+            if not self._is_empty_location(row, col):
+                continue
+            elif len(self.adjacent_players(row, col)) == self.n_agents:
                 continue
 
             self.field[row, col] = (
-                min_level
-                if min_level == max_level
-                else self.np_random.randint(min_level, max_level)
+                min_level if min_level == max_level else self.np_random.randint(min_level, max_level)
             )
             food_count += 1
-        self._food_spawned = self.field.sum()
+
+        if food_count < max_food:
+            return False
+        else:
+            self._food_spawned = self.field.sum()
+            return True
+
 
     def _is_empty_location(self, row, col):
 
@@ -257,8 +259,8 @@ class ForagingEnv(Env):
             player.reward = 0
 
             while attempts < 1000:
-                row = self.np_random.randint(0, self.rows - 1)
-                col = self.np_random.randint(0, self.cols - 1)
+                row = self.np_random.randint(0, self.rows)
+                col = self.np_random.randint(0, self.cols)
                 if self._is_empty_location(row, col):
                     player.setup(
                         (row, col),
@@ -385,11 +387,13 @@ class ForagingEnv(Env):
         return nobs, nreward, ndone, ninfo
 
     def reset(self):
-        self.field = np.zeros(self.field_size, np.int32)
-        self.spawn_players(self.max_player_level)
-        self.spawn_food(
-            self.max_food, max_level=sum([player.level for player in self.players])
-        )
+
+        spawn_success = False
+        while not spawn_success:
+            self.field = np.zeros(self.field_size, np.int32)
+            self.spawn_players(self.max_player_level)
+            spawn_success = self.spawn_food(self.max_food, max_level=sum([player.level for player in self.players]))
+
         self.current_step = 0
         self._game_over = False
         self._gen_valid_moves()
