@@ -13,9 +13,8 @@ for s, p, f, c, po in product(sizes, players, foods, coop, partial_obs):
         entry_point="lbforaging.foraging:ForagingEnv",
         kwargs={
             "players": p,
-            "max_player_level": p,
             "field_size": (s, s),
-            "max_food": f,
+            "max_food_n": f,
             "sight": 2 if po else s,
             "max_episode_steps": 50,
             "force_coop": c,

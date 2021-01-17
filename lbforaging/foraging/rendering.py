@@ -204,10 +204,10 @@ class Viewer(object):
             p.update(scale=self.grid_size / p.width)
         batch.draw()
         for i, p in enumerate(env.players):
-            self._draw_badge(*p.position, p.level)
+            self._draw_badge(*p.position, "T")
             self._draw_ID(*p.position, i)
 
-    def _draw_badge(self, row, col, level):
+    def _draw_badge(self, row, col, info):
         resolution = 6
         radius = self.grid_size / 5
 
@@ -227,14 +227,14 @@ class Viewer(object):
         glColor3ub(*_WHITE)
         circle.draw(GL_LINE_LOOP)
         label = pyglet.text.Label(
-            str(level),
-            font_name="Times New Roman",
-            font_size=12,
-            x=badge_x,
-            y=badge_y + 2,
-            anchor_x="center",
-            anchor_y="center",
-        )
+                str(info),
+                font_name="Times New Roman",
+                font_size=12,
+                x=badge_x,
+                y=badge_y + 2,
+                anchor_x="center",
+                anchor_y="center",
+            )
         label.draw()
 
     def _draw_ID(self, row, col, id):

@@ -85,7 +85,7 @@ register(
         "players": p,
         "max_player_level": 3,
         "field_size": (s, s),
-        "max_food": f,
+        "max_food_n": f,
         "sight": s,
         "max_episode_steps": 50,
         "force_coop": c,
