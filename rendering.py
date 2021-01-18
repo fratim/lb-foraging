@@ -242,8 +242,15 @@ class Viewer(object):
         badge_x = col * self.grid_size + (2 / 5) * self.grid_size
         badge_y = self.height - self.grid_size * (row+1) + (1 / 4) * self.grid_size
 
+        if id == 0:
+            name = "G"
+        elif id == 1:
+            name = "F"
+        else:
+            raise NotImplementedError
+
         label = pyglet.text.Label(
-            str(id),
+            str(name),
             font_name="Times New Roman",
             font_size=12,
             x=badge_x,
