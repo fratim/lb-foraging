@@ -67,7 +67,9 @@ class ForagingEnv(Env):
         self,
         players,
         field_size,
-        max_food_n,
+        n_food,
+        n_food_cat,
+        target_food,
         sight,
         max_episode_steps,
         force_coop
@@ -78,11 +80,11 @@ class ForagingEnv(Env):
 
         self.field = np.zeros(field_size, np.int32)
 
-        self.food_types = [1]
-        self.n_food_types = len(self.food_types)
-        self.target_foods = [1]
+        self.n_food = n_food
+        self.n_food_cat = n_food_cat
+        self.food_types = list(range(1, n_food_cat + 1))
+        self.target_foods = self.food_types if target_food == -1 else [target_food]
 
-        self.max_food_n = max_food_n
         self.sight = sight
         self.force_coop = force_coop
         self._game_over = None
@@ -110,8 +112,8 @@ class ForagingEnv(Env):
         field_x = self.field.shape[1]
         field_y = self.field.shape[0]
 
-        min_obs = [-1, -1, 0] * self.max_food_n + [0, 0] * len(self.players)
-        max_obs = [field_x, field_y, self.n_food_types] * self.max_food_n + [field_x, field_y] * len(self.players)
+        min_obs = [-1, -1, 0] * self.n_food + [0, 0] * len(self.players)
+        max_obs = [field_x, field_y, self.n_food_cat] * self.n_food + [field_x, field_y] * len(self.players)
 
         return gym.spaces.Box(np.array(min_obs), np.array(max_obs), dtype=np.float32)
 
@@ -203,15 +205,15 @@ class ForagingEnv(Env):
             and player.position[0] == row
         ]
 
-    def spawn_food(self, max_food_n):
+    def spawn_food(self, n_food):
 
-        if max_food_n % self.n_food_types != 0:
+        if n_food % self.n_food_cat != 0:
             raise ValueError("Unknown food configuration")
 
-        foods_per_type = int(max_food_n / self.n_food_types)
+        foods_per_type = int(n_food / self.n_food_cat)
         food_count_total = 0
 
-        for food_type in range(self.n_food_types):
+        for food_type in range(self.n_food_cat):
 
             food_count_type = 0
             attempts = 0
@@ -231,7 +233,7 @@ class ForagingEnv(Env):
                 food_count_type += 1
                 food_count_total += 1
 
-        if food_count_total < max_food_n:
+        if food_count_total < n_food:
             return False
         else:
             return True
@@ -345,7 +347,7 @@ class ForagingEnv(Env):
                 p for p in observation.players if not p.is_self
             ]
 
-            for i in range(self.max_food_n):
+            for i in range(self.n_food):
                 obs[3 * i] = -1
                 obs[3 * i + 1] = -1
                 obs[3 * i + 2] = 0
@@ -356,12 +358,12 @@ class ForagingEnv(Env):
                 obs[3 * i + 2] = observation.field[y, x]
 
             for i in range(len(self.players)):
-                obs[self.max_food_n * 3 + 2 * i] = -1
-                obs[self.max_food_n * 3 + 2 * i + 1] = -1
+                obs[self.n_food * 3 + 2 * i] = -1
+                obs[self.n_food * 3 + 2 * i + 1] = -1
 
             for i, p in enumerate(seen_players):
-                obs[self.max_food_n * 3 + 2 * i] = p.position[0]
-                obs[self.max_food_n * 3 + 2 * i + 1] = p.position[1]
+                obs[self.n_food * 3 + 2 * i] = p.position[0]
+                obs[self.n_food * 3 + 2 * i + 1] = p.position[1]
 
             return obs
 
@@ -384,7 +386,7 @@ class ForagingEnv(Env):
         while not spawn_success:
             self.field = np.zeros(self.field_size, np.int32)
             self.spawn_players()
-            spawn_success = self.spawn_food(self.max_food_n)
+            spawn_success = self.spawn_food(self.n_food)
 
         self.current_step = 0
         self._game_over = False
