@@ -70,8 +70,7 @@ class ForagingEnv(Env):
         max_food_n,
         sight,
         max_episode_steps,
-        force_coop,
-        normalize_reward=True,
+        force_coop
     ):
         self.logger = logging.getLogger(__name__)
         self.seed()
@@ -79,9 +78,9 @@ class ForagingEnv(Env):
 
         self.field = np.zeros(field_size, np.int32)
 
-        self.food_types = [1, 2]
+        self.food_types = [1]
         self.n_food_types = len(self.food_types)
-        self.target_foods = [1, 2]
+        self.target_foods = [1]
 
         self.max_food_n = max_food_n
         self.sight = sight
@@ -467,7 +466,7 @@ class ForagingEnv(Env):
         self.move_players(actions)
         self.reward_players()
 
-        self._game_over = (self._max_episode_steps <= self.current_step)
+        self._game_over = (self.field.sum() == 0 or self._max_episode_steps <= self.current_step)
         self._gen_valid_moves()
 
         observations = [self._make_obs(player) for player in self.players]
