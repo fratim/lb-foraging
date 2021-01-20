@@ -84,6 +84,7 @@ class ForagingEnv(Env):
         self.n_food_cat = n_food_cat
         self.food_types = list(range(1, n_food_cat + 1))
         self.target_foods = self.food_types if target_food == -1 else [target_food]
+        self.n_target_foods = len(self.target_foods)*(self.n_food/self.n_food_cat)
 
         self.sight = sight
         self.force_coop = force_coop
@@ -205,12 +206,12 @@ class ForagingEnv(Env):
             and player.position[0] == row
         ]
 
-    def spawn_food(self, n_food):
+    def spawn_food(self):
 
-        if n_food % self.n_food_cat != 0:
+        if self.n_food % self.n_food_cat != 0:
             raise ValueError("Unknown food configuration")
 
-        foods_per_type = int(n_food / self.n_food_cat)
+        foods_per_type = int(self.n_food / self.n_food_cat)
         food_count_total = 0
 
         for food_type in range(self.n_food_cat):
@@ -233,7 +234,7 @@ class ForagingEnv(Env):
                 food_count_type += 1
                 food_count_total += 1
 
-        if food_count_total < n_food:
+        if food_count_total < self.n_food:
             return False
         else:
             return True
@@ -386,7 +387,7 @@ class ForagingEnv(Env):
         while not spawn_success:
             self.field = np.zeros(self.field_size, np.int32)
             self.spawn_players()
-            spawn_success = self.spawn_food(self.n_food)
+            spawn_success = self.spawn_food()
 
         self.current_step = 0
         self._game_over = False
@@ -456,7 +457,7 @@ class ForagingEnv(Env):
         if not players_fail_to_eat and adj_food_locations.count(adj_food_locations[0]) == len(adj_food_locations):
             self.field[adj_food_locations[0]] = 0
             for player in self.players:
-                player.reward = 1 / self.n_agents
+                player.reward = 1 / self.n_target_foods
                 player.score += player.reward
         else:
             for player in self.players:
