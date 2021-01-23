@@ -219,7 +219,7 @@ class ForagingEnv(Env):
             food_count_type = 0
             attempts = 0
 
-            while food_count_type < foods_per_type and attempts < 1000:
+            while food_count_type < foods_per_type and attempts < 100:
                 attempts += 1
                 row = self.np_random.randint(1, self.rows - 1)
                 col = self.np_random.randint(1, self.cols - 1)
@@ -228,6 +228,8 @@ class ForagingEnv(Env):
                 if not self._is_empty_location(row, col):
                     continue
                 elif len(self.adjacent_players(row, col)) == self.n_agents:
+                    continue
+                elif self.neighborhood(row, col).sum() > 0:
                     continue
 
                 self.field[row, col] = self.food_types[food_type]
@@ -388,6 +390,7 @@ class ForagingEnv(Env):
             self.field = np.zeros(self.field_size, np.int32)
             self.spawn_players()
             spawn_success = self.spawn_food()
+
 
         self.current_step = 0
         self._game_over = False
