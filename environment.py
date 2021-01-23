@@ -46,6 +46,13 @@ class Player:
         else:
             return "Player"
 
+def get_target_foods_from_str(target_foods_str):
+
+    target_foods = []
+    for element in range(0, len(target_foods_str)):
+        target_foods.append(int(target_foods_str[element]))
+
+    return target_foods
 
 class ForagingEnv(Env):
     """
@@ -83,7 +90,7 @@ class ForagingEnv(Env):
         self.n_food = n_food
         self.n_food_cat = n_food_cat
         self.food_types = list(range(1, n_food_cat + 1))
-        self.target_foods = self.food_types if target_food == -1 else [target_food]
+        self.target_foods = get_target_foods_from_str(target_food)
         self.n_target_foods = len(self.target_foods)*(self.n_food/self.n_food_cat)
 
         self.sight = sight
