@@ -46,14 +46,6 @@ class Player:
         else:
             return "Player"
 
-def get_target_foods_from_str(target_foods_str):
-
-    target_foods = []
-    for element in range(0, len(target_foods_str)):
-        target_foods.append(int(target_foods_str[element]))
-
-    return target_foods
-
 class ForagingEnv(Env):
     """
     A class that contains rules/actions for the game level-based foraging.
@@ -74,12 +66,12 @@ class ForagingEnv(Env):
         self,
         players,
         field_size,
-        n_food,
-        n_food_cat,
-        target_food,
         sight,
-        max_episode_steps,
-        force_coop
+        n_foods,
+        food_types,
+        target_foods,
+        mix_foods,
+        max_episode_steps
     ):
         self.logger = logging.getLogger(__name__)
         self.seed()
@@ -87,14 +79,17 @@ class ForagingEnv(Env):
 
         self.field = np.zeros(field_size, np.int32)
 
-        self.n_food = n_food
-        self.n_food_cat = n_food_cat
-        self.food_types = list(range(1, n_food_cat + 1))
-        self.target_foods = get_target_foods_from_str(target_food)
-        self.n_target_foods = len(self.target_foods)*(self.n_food/self.n_food_cat)
+        self.n_foods = n_foods
+        self.food_types = [int(x) for x in food_types.split("_")]
+        self.target_foods = [int(x) for x in target_foods.split("_")]
+
+        self.n_food_cat = len(self.food_types)
+
+        self.mix_foods = mix_foods
+
+        self.n_target_foods = None
 
         self.sight = sight
-        self.force_coop = force_coop
         self._game_over = None
 
         self.action_space = gym.spaces.Tuple(tuple([gym.spaces.Discrete(5)] * len(self.players)))
@@ -120,8 +115,8 @@ class ForagingEnv(Env):
         field_x = self.field.shape[1]
         field_y = self.field.shape[0]
 
-        min_obs = [-1, -1, 0] * self.n_food + [0, 0] * len(self.players)
-        max_obs = [field_x, field_y, self.n_food_cat] * self.n_food + [field_x, field_y] * len(self.players)
+        min_obs = [-1, -1, 0] * self.n_foods + [0, 0] * len(self.players)
+        max_obs = [field_x, field_y, self.n_food_cat] * self.n_foods + [field_x, field_y] * len(self.players)
 
         return gym.spaces.Box(np.array(min_obs), np.array(max_obs), dtype=np.float32)
 
@@ -214,38 +209,46 @@ class ForagingEnv(Env):
         ]
 
     def spawn_food(self):
+        attempts = 0
+        food_count = 0
+        target_foods_spawned = 0
 
-        if self.n_food % self.n_food_cat != 0:
-            raise ValueError("Unknown food configuration")
+        if self.mix_foods:
+            pass
+        else:
+            presampled_food_type = np.random.choice(self.food_types, 1)[0]
 
-        foods_per_type = int(self.n_food / self.n_food_cat)
-        food_count_total = 0
+        while food_count < self.n_foods and attempts < 100:
 
-        for food_type in range(self.n_food_cat):
+            attempts += 1
+            row = self.np_random.randint(1, self.rows - 1)
+            col = self.np_random.randint(1, self.cols - 1)
 
-            food_count_type = 0
-            attempts = 0
+            # check if it has neighbors:
+            if not self._is_empty_location(row, col):
+                continue
+            elif len(self.adjacent_players(row, col)) == self.n_agents:
+                continue
+            elif self.neighborhood(row, col).sum() > 0:
+                continue
 
-            while food_count_type < foods_per_type and attempts < 100:
-                attempts += 1
-                row = self.np_random.randint(1, self.rows - 1)
-                col = self.np_random.randint(1, self.cols - 1)
+            # sample food type to spawn
+            if self.mix_foods:
+                sampled_food_type = np.random.choice(self.food_types, 1)[0]
+            else:
+                sampled_food_type = presampled_food_type
 
-                # check if it has neighbors:
-                if not self._is_empty_location(row, col):
-                    continue
-                elif len(self.adjacent_players(row, col)) == self.n_agents:
-                    continue
-                elif self.neighborhood(row, col).sum() > 0:
-                    continue
+            self.field[row, col] = sampled_food_type
 
-                self.field[row, col] = self.food_types[food_type]
-                food_count_type += 1
-                food_count_total += 1
+            if sampled_food_type in self.target_foods:
+                target_foods_spawned += 1
 
-        if food_count_total < self.n_food:
+            food_count += 1
+
+        if food_count < self.n_foods:
             return False
         else:
+            self.n_target_foods = target_foods_spawned
             return True
 
 
@@ -357,7 +360,7 @@ class ForagingEnv(Env):
                 p for p in observation.players if not p.is_self
             ]
 
-            for i in range(self.n_food):
+            for i in range(self.n_foods):
                 obs[3 * i] = -1
                 obs[3 * i + 1] = -1
                 obs[3 * i + 2] = 0
@@ -368,12 +371,12 @@ class ForagingEnv(Env):
                 obs[3 * i + 2] = observation.field[y, x]
 
             for i in range(len(self.players)):
-                obs[self.n_food * 3 + 2 * i] = -1
-                obs[self.n_food * 3 + 2 * i + 1] = -1
+                obs[self.n_foods * 3 + 2 * i] = -1
+                obs[self.n_foods * 3 + 2 * i + 1] = -1
 
             for i, p in enumerate(seen_players):
-                obs[self.n_food * 3 + 2 * i] = p.position[0]
-                obs[self.n_food * 3 + 2 * i + 1] = p.position[1]
+                obs[self.n_foods * 3 + 2 * i] = p.position[0]
+                obs[self.n_foods * 3 + 2 * i + 1] = p.position[1]
 
             return obs
 
@@ -393,10 +396,14 @@ class ForagingEnv(Env):
     def reset(self):
 
         spawn_success = False
+        counter = 0
         while not spawn_success:
+            counter += 1
             self.field = np.zeros(self.field_size, np.int32)
             self.spawn_players()
             spawn_success = self.spawn_food()
+            if counter > 1000:
+                raise ValueError("Unable to spawn")
 
 
         self.current_step = 0
@@ -465,14 +472,14 @@ class ForagingEnv(Env):
                 adj_food_locations.append(adj_food_loc)
 
         if not players_fail_to_eat and adj_food_locations.count(adj_food_locations[0]) == len(adj_food_locations):
-            self.field[adj_food_locations[0]] = 0
             for player in self.players:
                 player.reward = 1 / self.n_target_foods
                 player.score += player.reward
+
+            self.field[adj_food_locations[0]] = 0
         else:
             for player in self.players:
                 player.reward = 0
-
 
     def step(self, actions):
 
