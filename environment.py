@@ -71,6 +71,7 @@ class ForagingEnv(Env):
         food_types,
         target_foods,
         mix_foods,
+        simple_spawn,
         max_episode_steps
     ):
         self.logger = logging.getLogger(__name__)
@@ -88,6 +89,8 @@ class ForagingEnv(Env):
         self.mix_foods = mix_foods
 
         self.n_target_foods = None
+
+        self.simple_spawn = simple_spawn
 
         self.sight = sight
         self._game_over = None
@@ -264,14 +267,31 @@ class ForagingEnv(Env):
 
     def spawn_players(self):
 
+        if self.simple_spawn:
+            spawn_positions = []
+            n_spawn_positions = 4
+            mid_col = self.cols // 2
+            mid_row = self.rows // 2
+
+            spawn_positions.append((0, mid_col))
+            spawn_positions.append((mid_row, 0))
+            spawn_positions.append((mid_row, self.cols-1))
+            spawn_positions.append((self.rows-1, mid_col))
+
         for player in self.players:
 
             attempts = 0
             player.reward = 0
 
-            while attempts < 1000:
-                row = self.np_random.randint(0, self.rows)
-                col = self.np_random.randint(0, self.cols)
+            while attempts < 100:
+
+                if self.simple_spawn:
+                    choice = np.random.choice(range(n_spawn_positions), 1)[0]
+                    row, col = spawn_positions[choice]
+                else:
+                    row = self.np_random.randint(0, self.rows)
+                    col = self.np_random.randint(0, self.cols)
+
                 if self._is_empty_location(row, col):
                     player.setup(
                         (row, col),
