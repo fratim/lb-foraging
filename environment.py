@@ -216,10 +216,14 @@ class ForagingEnv(Env):
         food_count = 0
         target_foods_spawned = 0
 
-        if self.mix_foods:
+        if self.mix_foods == 1:
             pass
-        else:
+        elif self.mix_foods == 2:
+            i = 0
+        elif self.mix_foods == 0:
             presampled_food_type = np.random.choice(self.food_types, 1)[0]
+        else:
+            raise ValueError("Unknown Configuration for mix food")
 
         while food_count < self.n_foods and attempts < 100:
 
@@ -236,10 +240,15 @@ class ForagingEnv(Env):
                 continue
 
             # sample food type to spawn
-            if self.mix_foods:
+            if self.mix_foods == 1:
                 sampled_food_type = np.random.choice(self.food_types, 1)[0]
-            else:
+            elif self.mix_foods == 2:
+                sampled_food_type = self.food_types[i]
+                i += 1
+            elif self.mix_foods == 0:
                 sampled_food_type = presampled_food_type
+            else:
+                raise ValueError("Unknown Config")
 
             self.field[row, col] = sampled_food_type
 
