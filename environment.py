@@ -46,6 +46,14 @@ class Player:
         else:
             return "Player"
 
+
+def get_fromstring(inp_str):
+    categories = []
+    for index in range(len(inp_str)):
+        categories.append(int(inp_str[index]))
+    return categories
+
+
 class ForagingEnv(Env):
     """
     A class that contains rules/actions for the game level-based foraging.
@@ -81,8 +89,8 @@ class ForagingEnv(Env):
         self.field = np.zeros(field_size, np.int32)
 
         self.n_foods = n_foods
-        self.food_types = [int(x) for x in food_types.split("_")]
-        self.target_foods = [int(x) for x in target_foods.split("_")]
+        self.food_types = get_fromstring(food_types)
+        self.target_foods = get_fromstring(target_foods)
 
         self.n_food_cat = len(self.food_types)
 
