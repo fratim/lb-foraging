@@ -244,8 +244,8 @@ class ForagingEnv(Env):
                 continue
             elif len(self.adjacent_players(row, col)) == self.n_agents:
                 continue
-            elif self.neighborhood(row, col).sum() > 0:
-                continue
+            #elif self.neighborhood(row, col).sum() > 0:
+            #    continue
 
             # sample food type to spawn
             if self.mix_foods == 1:
